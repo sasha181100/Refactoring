@@ -1,8 +1,11 @@
 package ru.akirakozov.sd.refactoring.db;
 
+import ru.akirakozov.sd.refactoring.db.Parser;
 import ru.akirakozov.sd.refactoring.exceptions.DatabaseException;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 public class Database {
@@ -50,5 +53,20 @@ public class Database {
                     }
                 }
         );
+    }
+
+    public static <T> List<T> executeQueryAndProcess(String query,
+                                                     Parser<T> parser) {
+        return executeQuery(query, resultSet -> {
+            try {
+                List<T> result = new ArrayList<>();
+                while (resultSet.next()) {
+                    result.add(parser.parse(resultSet));
+                }
+                return result;
+            } catch (SQLException e) {
+                throw new DatabaseException("Error while reading from table", e);
+            }
+        });
     }
 }
