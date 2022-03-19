@@ -1,6 +1,5 @@
 package ru.akirakozov.sd.refactoring.db;
 
-import ru.akirakozov.sd.refactoring.db.Parser;
 import ru.akirakozov.sd.refactoring.exceptions.DatabaseException;
 
 import java.sql.*;
@@ -9,16 +8,27 @@ import java.util.List;
 import java.util.function.Function;
 
 public class Database {
-    private static <T> T withDatabaseConnection(Function<Connection, T> function) {
-        try (Connection c = DriverManager.getConnection("jdbc:sqlite:test.db")) {
+    private final String schema = "jdbc:sqlite";
+    private final String fileName;
+
+    public Database(String fileName) {
+        this.fileName = fileName;
+    }
+
+    private String getUrl() {
+        return schema + ":" + fileName;
+    }
+
+    private <T> T withDatabaseConnection(Function<Connection, T> function) {
+        try (Connection c = DriverManager.getConnection(getUrl())) {
             return function.apply(c);
         } catch (SQLException e) {
             throw new DatabaseException("Cannot create connection", e);
         }
     }
 
-    private static <T> T withStatement(Connection connection,
-                                       Function<Statement, T> function) {
+    private <T> T withStatement(Connection connection,
+                                Function<Statement, T> function) {
         try (Statement stmt = connection.createStatement()) {
             return function.apply(stmt);
         } catch (SQLException e) {
@@ -26,12 +36,12 @@ public class Database {
         }
     }
 
-    private static <T> T execute(Function<Statement, T> function) {
+    private <T> T execute(Function<Statement, T> function) {
         return withDatabaseConnection(c -> withStatement(c, function));
     }
 
-    public static <T> T executeQuery(String query,
-                                     Function<ResultSet, T> function) {
+    public <T> T executeQuery(String query,
+                              Function<ResultSet, T> function) {
         return execute(
                 s -> {
                     try (ResultSet rs = s.executeQuery(query)) {
@@ -43,7 +53,7 @@ public class Database {
         );
     }
 
-    public static int executeUpdate(String query) {
+    public int executeUpdate(String query) {
         return execute(
                 s -> {
                     try {
@@ -55,8 +65,8 @@ public class Database {
         );
     }
 
-    public static <T> List<T> executeQueryAndProcess(String query,
-                                                     Parser<T> parser) {
+    public <T> List<T> executeQueryAndProcess(String query,
+                                              Parser<T> parser) {
         return executeQuery(query, resultSet -> {
             try {
                 List<T> result = new ArrayList<>();
